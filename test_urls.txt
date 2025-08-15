@@ -1,0 +1,20 @@
+# Sample URLs for testing SocialCount
+# Remove the # to test specific URLs
+
+# YouTube URLs
+# https://www.youtube.com/watch?v=dQw4w9WgXcQ
+# https://www.youtube.com/watch?v=9bZkp7q19f0
+# https://youtu.be/dQw4w9WgXcQ
+
+# TikTok URLs (replace with actual URLs)
+# https://www.tiktok.com/@username/video/1234567890123456789
+# https://vm.tiktok.com/ZMexample/
+
+# Facebook URLs (replace with actual URLs)
+# https://www.facebook.com/watch/?v=1234567890123456
+# https://fb.watch/example123/
+
+# Instructions:
+# 1. Remove the # from the URLs you want to test
+# 2. Replace example URLs with real ones
+# 3. Run: python main.py --file test_urls.txt
