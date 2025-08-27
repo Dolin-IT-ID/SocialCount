@@ -1,0 +1,44 @@
+{
+  "url": "https://www.tiktok.com/@yan.aska6/video/7540133744380775687?is_from_webapp=1&sender_device=pc",
+  "platform": "tiktok",
+  "timestamp": "2025-08-27T09:35:25.422990",
+  "metadata": {
+    "platform": "tiktok",
+    "url": "https://www.tiktok.com/@yan.aska6/video/7540133744380775687?is_from_webapp=1&sender_device=pc",
+    "views": 668700,
+    "likes": 14300,
+    "shares": 152,
+    "comments": 385,
+    "title": null,
+    "author": null,
+    "upload_date": null,
+    "error": null
+  },
+  "upload_date_analysis": {
+    "raw": null,
+    "formatted": null,
+    "is_valid": false,
+    "error": "Tanggal unggah tidak ditemukan"
+  },
+  "validation": {
+    "completeness_score": 4,
+    "total_fields": 8,
+    "missing_fields": [
+      "title",
+      "author",
+      "upload_date",
+      "error"
+    ],
+    "present_fields": [
+      "views",
+      "likes",
+      "comments",
+      "shares"
+    ],
+    "recommendations": [
+      "Tanggal unggah tidak ditemukan. Periksa selector CSS untuk platform ini.",
+      "Judul video tidak ditemukan. Mungkin halaman belum sepenuhnya dimuat.",
+      "Nama author/channel tidak ditemukan. Periksa selector untuk nama channel."
+    ]
+  }
+}

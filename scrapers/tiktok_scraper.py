@@ -215,15 +215,25 @@ class TikTokScraper(BaseScraper):
                 pass
             
             # Extract upload date (if available)
-            try:
-                date_element = self.safe_find_element(
-                    By.CSS_SELECTOR,
-                    '.video-meta-date, [data-e2e="video-date"]'
-                )
-                if date_element:
-                    stats.upload_date = date_element.text.strip()
-            except:
-                pass
+            upload_date = None
+            date_selectors = ['.video-meta-date', '[data-e2e="video-date"]']
+            for selector in date_selectors:
+                try:
+                    date_element = self.safe_find_element(By.CSS_SELECTOR, selector)
+                    if date_element:
+                        date_text = date_element.text.strip()
+                        if date_text:
+                            upload_date = self._normalize_date(date_text)
+                            if upload_date:
+                                break
+                except Exception as e:
+                    continue
+            
+            # Fallback to enhanced date extraction if standard extraction fails
+            if not upload_date:
+                upload_date = self._enhanced_date_extraction_tiktok()
+            
+            stats.upload_date = upload_date
                 
         except TimeoutException:
             stats.error = "Timeout: TikTok page took too long to load"
@@ -242,3 +252,195 @@ class TikTokScraper(BaseScraper):
         text = re.sub(r'[^0-9kmb.,]', '', text)
         
         return super().extract_number(text)
+    
+    def _enhanced_date_extraction_tiktok(self):
+        """Enhanced date extraction for TikTok with multiple strategies"""
+        import re
+        from datetime import datetime
+        
+        # Enhanced selectors for TikTok date extraction
+        enhanced_selectors = [
+            # Meta tags
+            'meta[property="video:release_date"]',
+            'meta[property="article:published_time"]',
+            'meta[name="publish_date"]',
+            
+            # TikTok specific selectors
+            '[data-e2e="video-date"]',
+            '.video-meta-date',
+            '[data-e2e="video-desc"] span[data-e2e="video-published-date"]',
+            '.video-info-detail span[data-e2e="video-published-date"]',
+            '.video-card-big-info span[data-e2e="video-published-date"]',
+            '.video-feed-item-wrapper span[data-e2e="video-published-date"]',
+            '.video-meta-info .date',
+            '.video-card .date',
+            'time[datetime]'
+        ]
+        
+        # Try enhanced selectors
+        for selector in enhanced_selectors:
+            try:
+                if selector.startswith('meta'):
+                    element = self.safe_find_element(By.CSS_SELECTOR, selector)
+                    if element:
+                        date_value = element.get_attribute('content')
+                        if date_value:
+                            return self._normalize_date(date_value)
+                elif selector == 'time[datetime]':
+                    element = self.safe_find_element(By.CSS_SELECTOR, selector)
+                    if element:
+                        datetime_value = element.get_attribute('datetime')
+                        if datetime_value:
+                            return self._normalize_date(datetime_value)
+                else:
+                    element = self.safe_find_element(By.CSS_SELECTOR, selector)
+                    if element:
+                        date_text = element.text.strip()
+                        if date_text:
+                            return self._normalize_date(date_text)
+            except:
+                continue
+        
+        # Search in page source for date patterns
+        try:
+            page_source = self.driver.page_source
+            
+            # Date patterns to search for
+            date_patterns = [
+                r'"createTime"\s*:\s*(\d+)',  # Unix timestamp
+                r'"publishTime"\s*:\s*(\d+)',  # Unix timestamp
+                r'"uploadDate"\s*:\s*"([^"]+)"',
+                r'"datePublished"\s*:\s*"([^"]+)"',
+                r'(\w+\s+\d{1,2},\s+\d{4})',  # Jan 15, 2024
+                r'(\d{1,2}\s+\w+\s+\d{4})',   # 15 Jan 2024
+                r'(\d{4}-\d{2}-\d{2})',       # 2024-01-15
+                r'(\d+)\s+(day|week|month|year)s?\s+ago',  # Relative time
+                r'(\d+)\s+(hari|minggu|bulan|tahun)\s+yang\s+lalu',  # Indonesian relative time
+            ]
+            
+            for pattern in date_patterns:
+                matches = re.findall(pattern, page_source, re.IGNORECASE)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        match = match[0] if match[0] else ' '.join(match)
+                    
+                    # Handle Unix timestamp
+                    if (pattern.startswith(r'"createTime"') or pattern.startswith(r'"publishTime"')) and match.isdigit():
+                        try:
+                            timestamp = int(match)
+                            date_obj = datetime.fromtimestamp(timestamp)
+                            return date_obj.strftime('%B %d, %Y')
+                        except:
+                            continue
+                    
+                    normalized = self._normalize_date(match)
+                    if normalized and normalized != match:  # Only return if successfully normalized
+                        return normalized
+        except:
+            pass
+        
+        return None
+    
+    def _normalize_date(self, date_str):
+        """Normalize date string to consistent format"""
+        if not date_str:
+            return None
+        
+        import re
+        from datetime import datetime, timedelta
+        
+        date_str = date_str.strip()
+        
+        # Handle ISO 8601 format with timezone (e.g., "2023-01-30T02:34:17-08:00")
+        if 'T' in date_str and (':' in date_str[-6:] or date_str.endswith('Z')):
+            try:
+                # Extract just the date part and parse it
+                date_part = date_str.split('T')[0]
+                date_obj = datetime.strptime(date_part, '%Y-%m-%d')
+                return date_obj.strftime('%B %d, %Y')
+            except:
+                pass
+        
+        # Try various date formats
+        date_formats = [
+            '%B %d, %Y',      # October 24, 2009
+            '%d %B %Y',       # 24 October 2009
+            '%Y-%m-%d',       # 2009-10-24
+            '%d/%m/%Y',       # 24/10/2009
+            '%m/%d/%Y',       # 10/24/2009
+            '%Y-%m-%dT%H:%M:%S%z',  # ISO 8601 with timezone
+            '%Y-%m-%dT%H:%M:%SZ',   # ISO 8601 UTC
+            '%Y-%m-%dT%H:%M:%S',    # ISO 8601 without timezone
+        ]
+        
+        for fmt in date_formats:
+            try:
+                date_obj = datetime.strptime(date_str, fmt)
+                return date_obj.strftime('%B %d, %Y')
+            except ValueError:
+                continue
+        
+        # Handle relative time (e.g., "2 days ago", "1 week ago")
+        relative_match = re.match(r'(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago', date_str, re.IGNORECASE)
+        if relative_match:
+            return self._convert_relative_time(relative_match.group(1), relative_match.group(2))
+        
+        # Handle Indonesian relative time
+        indonesian_match = re.match(r'(\d+)\s+(detik|menit|jam|hari|minggu|bulan|tahun)\s+yang\s+lalu', date_str, re.IGNORECASE)
+        if indonesian_match:
+            return self._convert_relative_time_indonesian(indonesian_match.group(1), indonesian_match.group(2))
+        
+        return date_str  # Return original if no format matches
+    
+    def _convert_relative_time(self, amount, unit):
+        """Convert relative time to absolute date"""
+        try:
+            from datetime import datetime, timedelta
+            amount = int(amount)
+            now = datetime.now()
+            
+            if unit.lower().startswith('second'):
+                date_obj = now - timedelta(seconds=amount)
+            elif unit.lower().startswith('minute'):
+                date_obj = now - timedelta(minutes=amount)
+            elif unit.lower().startswith('hour'):
+                date_obj = now - timedelta(hours=amount)
+            elif unit.lower().startswith('day'):
+                date_obj = now - timedelta(days=amount)
+            elif unit.lower().startswith('week'):
+                date_obj = now - timedelta(weeks=amount)
+            elif unit.lower().startswith('month'):
+                date_obj = now - timedelta(days=amount * 30)  # Approximate
+            elif unit.lower().startswith('year'):
+                date_obj = now - timedelta(days=amount * 365)  # Approximate
+            else:
+                return None
+            
+            return date_obj.strftime('%B %d, %Y')
+        except:
+            return None
+    
+    def _convert_relative_time_indonesian(self, amount, unit):
+        """Convert Indonesian relative time to absolute date"""
+        try:
+            from datetime import datetime, timedelta
+            amount = int(amount)
+            now = datetime.now()
+            
+            unit_mapping = {
+                'detik': 'seconds',
+                'menit': 'minutes', 
+                'jam': 'hours',
+                'hari': 'days',
+                'minggu': 'weeks',
+                'bulan': 'months',
+                'tahun': 'years'
+            }
+            
+            english_unit = unit_mapping.get(unit.lower())
+            if english_unit:
+                return self._convert_relative_time(str(amount), english_unit)
+            
+            return None
+        except:
+            return None

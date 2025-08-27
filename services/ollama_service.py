@@ -137,6 +137,45 @@ Make suggestions specific to the {stats_data.get('platform', 'platform')} platfo
         
         return self.generate_response(prompt)
     
+    def analyze_image_with_text(self, image_base64: str, prompt: str) -> str:
+        """Analyze image with text using vision-capable model"""
+        try:
+            # Check if we have a vision-capable model
+            vision_models = ['llava', 'llava:latest', 'bakllava', 'moondream']
+            available_models = [m.get('name', '') for m in self.list_models()]
+            
+            # Find a suitable vision model
+            vision_model = None
+            for model in vision_models:
+                if model in available_models:
+                    vision_model = model
+                    break
+            
+            if not vision_model:
+                return "Error: No vision-capable model available. Please install llava or similar model."
+            
+            payload = {
+                "model": vision_model,
+                "prompt": prompt,
+                "images": [image_base64],
+                "stream": False
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/api/generate",
+                json=payload,
+                timeout=60  # Longer timeout for vision analysis
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', '')
+            else:
+                return f"Error: {response.status_code} - {response.text}"
+                
+        except Exception as e:
+            return f"Error analyzing image: {str(e)}"
+    
     def health_check(self) -> Dict[str, Any]:
         """Perform health check on Ollama service"""
         result = {
