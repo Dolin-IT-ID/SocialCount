@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "url": "https://www.tiktok.com/@dolinkevin/video/7522411200043339015",
+  "platform": "tiktok",
+  "video_info": {
+    "title": null,
+    "author": null,
+    "views": 100,
+    "likes": 0,
+    "comments": 0,
+    "shares": 1
+  },
+  "upload_date": {
+    "status": "valid",
+    "message": "Tanggal valid - video berumur 191 hari (0.5 tahun)",
+    "is_valid": true,
+    "formatted_date": "18 February 2025",
+    "raw_date": "February 18, 2025",
+    "age_days": 191,
+    "age_years": 0.5
+  },
+  "completeness": {
+    "score": 71.4,
+    "found_count": 5,
+    "total_count": 7,
+    "found_fields": [
+      "views",
+      "likes",
+      "comments",
+      "shares",
+      "upload_date"
+    ],
+    "missing_fields": [
+      "title",
+      "author"
+    ]
+  },
+  "extracted_at": "2025-08-28T11:07:58.031971",
+  "timestamp": "2025-08-28 11:07:58",
+  "nama_pembuat": "Kevin",
+  "nama_akun": "@dolinkevin",
+  "waktu_penghitungan": "2025-08-28 11:06:52.435916",
+  "extraction_timestamp": "2025-08-28T11:08:54.143516"
+}
