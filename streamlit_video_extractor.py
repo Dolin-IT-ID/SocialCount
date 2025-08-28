@@ -33,6 +33,13 @@ from vlm_metrics_analyzer import analyze_video_with_vlm, VLMAnalysisResult
 from database.mongodb_config import mongo_db
 from utils.export_utils import data_exporter
 
+# Import sistem internasionalisasi
+from i18n import (
+    init_language, get_text, t, create_language_switcher,
+    get_tab_names, show_success_message, show_error_message,
+    show_warning_message, show_info_message, get_current_language
+)
+
 def detect_platform(url: str) -> str:
     """Deteksi platform dari URL"""
     url_lower = url.lower()
@@ -159,10 +166,17 @@ def setup_vlm_service():
 
 def display_header():
     """Tampilkan header aplikasi"""
-    st.markdown('<h1 class="main-header">🎬 Video Extractor Pro</h1>', unsafe_allow_html=True)
+    # Initialize language system
+    init_language()
+    
+    # Dynamic header based on language
+    app_title = get_text('app_title')
+    app_subtitle = get_text('app_subtitle')
+    
+    st.markdown(f'<h1 class="main-header">{app_title}</h1>', unsafe_allow_html=True)
     st.markdown(
-        "<p style='text-align: center; font-size: 1.3rem; color: #666; margin-bottom: 2rem;'>"
-        "🚀 Ekstraksi Detail Video dengan AI • YouTube, TikTok & Facebook • VLM Integration"
+        f"<p style='text-align: center; font-size: 1.3rem; color: #666; margin-bottom: 2rem;'>"
+        f"{app_subtitle}"
         "</p>", 
         unsafe_allow_html=True
     )
@@ -170,33 +184,36 @@ def display_header():
 
 def display_sidebar():
     """Tampilkan sidebar dengan informasi dan konfigurasi"""
+    # Language switcher at the top
+    create_language_switcher()
+    
     st.sidebar.markdown(
-        "<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
+        f"<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
         "padding: 1rem; border-radius: 10px; color: white; text-align: center; margin-bottom: 1rem;'>"
-        "<h2>⚙️ Konfigurasi</h2></div>", 
+        f"<h2>⚙️ {get_text('sidebar_title')}</h2></div>", 
         unsafe_allow_html=True
     )
     
     # VLM Status
-    st.sidebar.subheader("🤖 Status VLM")
+    st.sidebar.subheader(f"🤖 {get_text('sidebar_vlm')}")
     if st.sidebar.button("🔍 Cek Status VLM"):
         with st.sidebar:
-            with st.spinner("Memeriksa VLM..."):
+            with st.spinner(get_text('analyzing')):
                 vlm_available = setup_vlm_service()
                 if vlm_available:
-                    st.success("✅ VLM: Aktif")
-                    st.info("🧠 Siap untuk analisis AI")
+                    st.success(get_text('vlm_active'))
+                    st.info(get_text('ai_ready'))
                 else:
-                    st.error("❌ VLM: Tidak aktif")
-                    st.warning("⚠️ Analisis AI tidak tersedia")
+                    st.error(get_text('vlm_inactive'))
+                    st.warning(get_text('ai_unavailable'))
     
     # Platform yang didukung
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📱 Platform Didukung")
+    st.sidebar.subheader(f"📱 {get_text('sidebar_title')}")
     platforms = {
-        "YouTube": {"icon": "🎥", "features": ["Views", "Likes", "Comments", "Upload Date"]},
-        "TikTok": {"icon": "🎵", "features": ["Views", "Likes", "Comments", "Shares"]}, 
-        "Facebook": {"icon": "👥", "features": ["Views", "Likes", "Comments", "Shares"]}
+        "YouTube": {"icon": "🎥", "features": get_text('youtube_features', [])},
+        "TikTok": {"icon": "🎵", "features": get_text('tiktok_features', [])}, 
+        "Facebook": {"icon": "👥", "features": get_text('facebook_features', [])}
     }
     
     for platform, info in platforms.items():
@@ -206,26 +223,17 @@ def display_sidebar():
     
     # Fitur VLM
     st.sidebar.markdown("---")
-    st.sidebar.subheader("🧠 Fitur VLM")
-    st.sidebar.markdown("""
-    • 📊 Analisis engagement
-    • 📈 Prediksi performa
-    • 🎯 Rekomendasi konten
-    • 📝 Ringkasan otomatis
-    • 🔍 Insight mendalam
-    """)
+    st.sidebar.subheader(f"🧠 {get_text('sidebar_vlm')}")
+    vlm_features = get_text('vlm_features', [])
+    for feature in vlm_features:
+        st.sidebar.markdown(f"• {feature}")
     
     # Instruksi penggunaan
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📋 Cara Penggunaan")
-    st.sidebar.markdown("""
-    1. 📝 Masukkan URL video
-    2. 🚀 Klik tombol "Ekstrak Detail"
-    3. ⏳ Tunggu proses ekstraksi
-    4. 📊 Lihat hasil dan analisis
-    5. 🤖 Dapatkan insight AI (jika VLM aktif)
-    6. 💾 Simpan hasil jika diperlukan
-    """)
+    st.sidebar.subheader(f"📋 {get_text('sidebar_usage')}")
+    usage_steps = get_text('usage_steps', [])
+    for i, step in enumerate(usage_steps, 1):
+        st.sidebar.markdown(f"{i}. {step}")
 
 def validate_url_input(url: str) -> tuple[bool, str, str]:
     """Validasi input URL"""
@@ -287,7 +295,7 @@ def display_video_stats(video_data: Dict[str, Any], vlm_result: VLMAnalysisResul
     
     stats = video_data.get('stats')
     if not stats:
-        st.error("Data statistik tidak tersedia")
+        st.error(get_text('stats_unavailable'))
         return
     
     # VLM Analysis Section
@@ -479,10 +487,10 @@ def create_download_link(video_data: Dict[str, Any]):
 def display_extraction_history():
     """Tampilkan riwayat ekstraksi"""
     if not st.session_state.extraction_history:
-        st.info("📝 Belum ada riwayat ekstraksi. Mulai dengan mengekstrak video pertama Anda!")
+        st.info(get_text('history_empty'))
         return
     
-    st.subheader(f"📚 Riwayat Ekstraksi ({len(st.session_state.extraction_history)} video)")
+    st.subheader(f"{get_text('history_title')} ({len(st.session_state.extraction_history)} {get_text('video_count')})")
     
     # Summary statistics
     total_views = sum(item.get('stats', {}).get('views', 0) or 0 for item in st.session_state.extraction_history if 'stats' in item)
@@ -490,11 +498,11 @@ def display_extraction_history():
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("📊 Total Video", len(st.session_state.extraction_history))
+        st.metric(get_text('total_videos'), len(st.session_state.extraction_history))
     with col2:
-        st.metric("👀 Total Views", format_number(total_views))
+        st.metric(get_text('total_views'), format_number(total_views))
     with col3:
-        st.metric("👍 Total Likes", format_number(total_likes))
+        st.metric(get_text('total_likes'), format_number(total_likes))
     
     st.markdown("---")
     
@@ -506,8 +514,8 @@ def display_extraction_history():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown(f"**Judul:** {stats.get('title', 'N/A')[:50]}...")
-                    st.markdown(f"**Platform:** {stats.get('platform', 'N/A').upper()}")
+                    st.markdown(f"**{get_text('title_label')}:** {stats.get('title', 'N/A')[:50]}...")
+                    st.markdown(f"**{get_text('platform_label')}:** {stats.get('platform', 'N/A').upper()}")
                     st.markdown(f"**URL:** {item.get('url', 'N/A')[:50]}...")
                 
                 with col2:
@@ -518,9 +526,9 @@ def display_extraction_history():
                 st.error(f"Error: {item['error']}")
     
     # Clear history button
-    if st.button("🗑️ Hapus Riwayat", type="secondary"):
+    if st.button(get_text('clear_history'), type="secondary"):
         st.session_state.extraction_history = []
-        st.success("✅ Riwayat berhasil dihapus!")
+        st.success(get_text('history_cleared'))
         st.rerun()
 
 def main():
@@ -532,32 +540,33 @@ def main():
     # Setup VLM service
     setup_vlm_service()
     
-    # Main tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["🎬 Ekstrak Video", "📊 Analisis Batch", "📚 Riwayat", "🗄️ Database & Ekspor"])
+    # Main tabs with dynamic names
+    tab_names = get_tab_names()
+    tab1, tab2, tab3, tab4 = st.tabs(tab_names)
     
     with tab1:
-        st.subheader("🎬 Ekstraksi Detail Video Tunggal")
+        st.subheader(get_text('tab_extract'))
         
         # Input fields untuk informasi tambahan
         col_info1, col_info2 = st.columns(2)
         
         with col_info1:
             nama_pembuat = st.text_input(
-                "👤 Nama Pembuat Video:",
-                placeholder="Masukkan nama pembuat/kreator video",
-                help="Nama pembuat atau kreator video"
+                get_text('creator_name'),
+                placeholder=get_text('creator_placeholder'),
+                help=get_text('creator_help')
             )
         
         with col_info2:
             waktu_penghitungan = st.date_input(
-                "📅 Tanggal Penghitungan:",
+                get_text('calculation_date'),
                 value=datetime.now().date(),
-                help="Tanggal saat melakukan penghitungan/analisis video"
+                help=get_text('date_help')
             )
             waktu_jam = st.time_input(
-                "⏰ Jam Penghitungan:",
+                get_text('calculation_time'),
                 value=datetime.now().time(),
-                help="Jam saat melakukan penghitungan/analisis video"
+                help=get_text('time_help')
             )
             # Gabungkan tanggal dan jam menjadi datetime
             waktu_penghitungan = datetime.combine(waktu_penghitungan, waktu_jam)
@@ -567,9 +576,9 @@ def main():
         
         with col_url1:
             url_input = st.text_input(
-                "🔗 Masukkan URL Video:",
-                placeholder="https://www.youtube.com/watch?v=... atau https://www.tiktok.com/@user/video/... atau https://www.facebook.com/watch/?v=...",
-                help="Mendukung URL dari YouTube, TikTok, dan Facebook"
+                get_text('url_input'),
+                placeholder=get_text('url_placeholder'),
+                help=get_text('url_help')
             )
         
         with col_url2:
@@ -582,7 +591,7 @@ def main():
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         
         with col1:
-            extract_button = st.button("🚀 Ekstrak Detail", type="primary")
+            extract_button = st.button(get_text('extract_button'), type="primary")
         
         with col2:
             vlm_analysis = st.checkbox("🤖 Analisis VLM", value=st.session_state.vlm_enabled, disabled=not st.session_state.vlm_enabled)
@@ -659,7 +668,7 @@ def main():
                                     st.warning(f"⚠️ VLM analysis gagal: {str(e)}")
                         
                         # Tampilkan hasil
-                        st.success("🎉 Ekstraksi berhasil!")
+                        st.success(get_text('extraction_success'))
                         display_video_stats(video_data, vlm_analysis_result)
                         
                         # Download link
@@ -676,14 +685,14 @@ def main():
                         # Simpan ke database jika diminta
                         if save_to_db:
                             if not nama_pembuat or not nama_akun:
-                                st.warning("⚠️ Harap isi Nama Pembuat Video dan Nama Akun sebelum menyimpan ke database")
+                                st.warning(get_text('fill_creator_warning'))
                             else:
                                 with st.spinner("💾 Menyimpan ke database..."):
                                     success = mongo_db.insert_video_data(video_data)
                                     if success:
-                                        st.success("✅ Data berhasil disimpan ke database MongoDB!")
+                                        st.success(get_text('data_saved_success'))
                                     else:
-                                        st.error("❌ Gagal menyimpan data ke database")
+                                        st.error(get_text('data_save_failed'))
                     
                     else:
                         status_text.text("❌ Ekstraksi gagal")
@@ -706,30 +715,30 @@ def main():
                     status_text.empty()
         
         elif extract_button and not url_input:
-            st.warning("⚠️ Silakan masukkan URL video terlebih dahulu")
+            st.warning(get_text('enter_url_warning'))
     
     with tab2:
-        st.subheader("📊 Analisis Batch Multiple URL")
+        st.subheader(get_text('tab_batch'))
         
         st.markdown(
-            "<div class='info-card'>💡 Fitur ini memungkinkan Anda menganalisis beberapa video sekaligus</div>", 
+            f"<div class='info-card'>💡 {get_text('batch_info')}</div>", 
             unsafe_allow_html=True
         )
         
         # Multiple URL input
         urls_text = st.text_area(
-            "📝 Masukkan URL (satu per baris):",
+            get_text('batch_urls'),
             height=200,
-            placeholder="https://www.youtube.com/watch?v=...\nhttps://www.tiktok.com/@user/video/...\nhttps://www.facebook.com/watch/?v=..."
+            placeholder=get_text('batch_placeholder')
         )
         
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            batch_extract = st.button("🚀 Ekstrak Semua", type="primary")
+            batch_extract = st.button(get_text('batch_extract'), type="primary")
         
         with col2:
-            batch_vlm = st.checkbox("🤖 Analisis VLM Batch", value=False, disabled=not st.session_state.vlm_enabled)
+            batch_vlm = st.checkbox(get_text('batch_vlm'), value=False, disabled=not st.session_state.vlm_enabled)
         
         if batch_extract and urls_text.strip():
             urls = [url.strip() for url in urls_text.split('\n') if url.strip()]
@@ -796,60 +805,60 @@ def main():
                             st.markdown("---")
             
             else:
-                st.warning("⚠️ Tidak ada URL valid yang ditemukan")
+                st.warning(get_text('no_valid_urls'))
         
         elif batch_extract and not urls_text.strip():
-            st.warning("⚠️ Silakan masukkan URL terlebih dahulu")
+            st.warning(get_text('enter_urls_first'))
     
     with tab3:
         display_extraction_history()
     
     with tab4:
-        st.subheader("🗄️ Database & Ekspor Data")
+        st.subheader(get_text('tab_database'))
         
         # Database connection status
         col_status1, col_status2 = st.columns(2)
         
         with col_status1:
-            if st.button("🔄 Cek Koneksi Database"):
-                with st.spinner("Mengecek koneksi MongoDB..."):
+            if st.button(get_text('check_db_connection')):
+                with st.spinner(get_text('checking_mongodb')):
                     if mongo_db.connect():
-                        st.success("✅ Koneksi MongoDB berhasil!")
+                        st.success(get_text('mongodb_success'))
                         total_videos = mongo_db.get_video_count()
-                        st.info(f"📊 Total video dalam database: {total_videos}")
+                        st.info(f"{get_text('total_db_videos')}: {total_videos}")
                     else:
-                        st.error("❌ Gagal terhubung ke MongoDB")
+                        st.error(get_text('mongodb_failed'))
         
         with col_status2:
-            st.info("💡 **Tips:** Pastikan MongoDB berjalan di sistem Anda")
+            st.info(f"💡 **{get_text('tips_label')}:** {get_text('mongodb_tips')}")
         
         st.markdown("---")
         
         # Filter data berdasarkan tanggal
-        st.subheader("🔍 Filter Data")
+        st.subheader(get_text('filter_data'))
         
         col_filter1, col_filter2, col_filter3 = st.columns(3)
         
         with col_filter1:
             start_date = st.date_input(
-                "📅 Tanggal Mulai:",
+                get_text('start_date'),
                 value=datetime.now().date().replace(day=1),  # Awal bulan
-                help="Pilih tanggal mulai untuk filter data"
+                help=get_text('start_date_help')
             )
         
         with col_filter2:
             end_date = st.date_input(
-                "📅 Tanggal Akhir:",
+                get_text('end_date'),
                 value=datetime.now().date(),
-                help="Pilih tanggal akhir untuk filter data"
+                help=get_text('end_date_help')
             )
         
         with col_filter3:
-            load_data_btn = st.button("📊 Muat Data", type="primary")
+            load_data_btn = st.button(get_text('load_data'), type="primary")
         
         # Load dan tampilkan data
         if load_data_btn or 'db_video_data' not in st.session_state:
-            with st.spinner("📥 Memuat data dari database..."):
+            with st.spinner(get_text('loading_data')):
                 start_datetime = datetime.combine(start_date, datetime.min.time())
                 end_datetime = datetime.combine(end_date, datetime.max.time())
                 
@@ -860,20 +869,20 @@ def main():
             video_data = st.session_state.db_video_data
             
             # Tampilkan ringkasan data
-            st.subheader("📈 Ringkasan Data")
+            st.subheader(get_text('data_summary'))
             data_exporter.display_export_summary(video_data)
             
             st.markdown("---")
             
             # Preview data dalam tabel
-            st.subheader("👀 Preview Data")
+            st.subheader(get_text('data_preview'))
             
-            if st.checkbox("📋 Tampilkan Data dalam Tabel"):
+            if st.checkbox(get_text('show_data_table')):
                 df = data_exporter.prepare_data_for_export(video_data)
                 if not df.empty:
                     # Pilih kolom yang akan ditampilkan
                     display_columns = st.multiselect(
-                        "Pilih kolom untuk ditampilkan:",
+                        get_text('select_columns'),
                         options=df.columns.tolist(),
                         default=['Nama Pembuat Video', 'Nama Akun', 'Platform', 'Judul Video', 'Views', 'Waktu Penghitungan']
                     )
@@ -885,34 +894,34 @@ def main():
                             height=400
                         )
                     else:
-                        st.warning("⚠️ Pilih minimal satu kolom untuk ditampilkan")
+                        st.warning(get_text('select_min_column'))
                 else:
-                    st.info("📭 Tidak ada data untuk ditampilkan")
+                    st.info(get_text('no_data_display'))
             
             st.markdown("---")
             
             # Ekspor data
-            st.subheader("📥 Ekspor Data")
+            st.subheader(get_text('export_data'))
             
             col_export1, col_export2, col_export3 = st.columns(3)
             
             with col_export1:
-                st.write("**Format Ekspor:**")
+                st.write(f"**{get_text('export_format')}:**")
                 export_format = st.radio(
-                    "Pilih format ekspor:",
+                    get_text('select_export_format'),
                     options=["CSV", "Excel Detail", "Excel Ringkasan"],
                     horizontal=False,
-                    help="Excel Detail: Data lengkap per video\nExcel Ringkasan: Format statistik sesuai referensi Vietnam/Chinese"
+                    help=get_text('export_format_help')
                 )
             
             with col_export2:
-                st.write("**Preview Format:**")
+                st.write(f"**{get_text('format_preview')}:**")
                 if export_format == "Excel Ringkasan":
-                    st.info("📊 Format ringkasan statistik per kreator dengan header Vietnam/Chinese sesuai file referensi")
+                    st.info(get_text('summary_format_info'))
                 elif export_format == "Excel Detail":
-                    st.info("📋 Format detail lengkap per video dengan header Indonesia")
+                    st.info(get_text('detail_format_info'))
                 else:
-                    st.info("📄 Format CSV standar untuk data mentah")
+                    st.info(get_text('csv_format_info'))
             
             with col_export3:
                 st.write("**Aksi Ekspor:**")
@@ -934,7 +943,7 @@ def main():
                                 data_exporter.create_download_link(file_data, filename, format_name)
                                 st.success(f"✅ File {export_format} siap untuk diunduh!")
                             else:
-                                st.error("❌ Gagal membuat file ekspor")
+                                st.error(get_text('export_failed'))
                         except Exception as e:
                             st.error(f"❌ Error saat ekspor: {str(e)}")
             
@@ -963,9 +972,9 @@ def main():
                         )
         
         elif 'db_video_data' in st.session_state:
-            st.info("📭 Tidak ada data dalam rentang tanggal yang dipilih")
+            st.info(get_text('no_data_range'))
         else:
-            st.info("👆 Klik 'Muat Data' untuk menampilkan data dari database")
+            st.info(get_text('click_load_data'))
 
 if __name__ == "__main__":
     main()

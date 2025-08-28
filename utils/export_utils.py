@@ -6,6 +6,7 @@ import streamlit as st
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
+from i18n import get_text
 
 class DataExporter:
     def __init__(self):
@@ -20,22 +21,22 @@ class DataExporter:
         export_data = []
         for video in video_data:
             row = {
-                'ID': str(video.get('_id', '')),
-                'Nama Pembuat Video': video.get('nama_pembuat', ''),
-                'Nama Akun': video.get('nama_akun', ''),
-                'URL Video': video.get('url_video', ''),
-                'Platform': video.get('platform', ''),
-                'Judul Video': video.get('title', ''),
-                'Deskripsi': video.get('description', '')[:100] + '...' if video.get('description', '') else '',
-                'Views': video.get('views', 0),
-                'Likes': video.get('likes', 0),
-                'Comments': video.get('comments', 0),
-                'Shares': video.get('shares', 0),
-                'Duration': video.get('duration', ''),
-                'Upload Date': video.get('upload_date', ''),
-                'Waktu Penghitungan': video.get('waktu_penghitungan', ''),
-                'Created At': video.get('created_at', ''),
-                'Updated At': video.get('updated_at', '')
+                get_text('export_id'): str(video.get('_id', '')),
+                get_text('export_creator_name'): video.get('nama_pembuat', ''),
+                get_text('export_account_name'): video.get('nama_akun', ''),
+                get_text('export_video_url'): video.get('url_video', ''),
+                get_text('export_platform'): video.get('platform', ''),
+                get_text('export_video_title'): video.get('title', ''),
+                get_text('export_description'): video.get('description', '')[:100] + '...' if video.get('description', '') else '',
+                get_text('export_views'): video.get('views', 0),
+                get_text('export_likes'): video.get('likes', 0),
+                get_text('export_comments'): video.get('comments', 0),
+                get_text('export_shares'): video.get('shares', 0),
+                get_text('export_duration'): video.get('duration', ''),
+                get_text('export_upload_date'): video.get('upload_date', ''),
+                get_text('export_calculation_time'): video.get('waktu_penghitungan', ''),
+                get_text('export_created_at'): video.get('created_at', ''),
+                get_text('export_updated_at'): video.get('updated_at', '')
             }
             export_data.append(row)
         
@@ -129,57 +130,62 @@ class DataExporter:
         return f"{prefix}_{timestamp}.{extension}"
     
     def prepare_summary_statistics(self, video_data: List[Dict]) -> pd.DataFrame:
-        """Menyiapkan data ringkasan statistik sesuai format referensi Vietnam/Chinese"""
+        """Menyiapkan statistik ringkasan berdasarkan creator dan platform"""
         if not video_data:
             return pd.DataFrame()
         
-        # Kelompokkan data per kreator
+        # Group by creator
         creator_stats = {}
-        
         for video in video_data:
-            creator_name = video.get('nama_pembuat', 'Unknown')
-            platform = video.get('platform', 'Unknown').lower()
+            creator = video.get('nama_pembuat', 'Unknown')
+            platform = video.get('platform', 'Unknown')
             
-            if creator_name not in creator_stats:
-                creator_stats[creator_name] = {
-                    'facebook': {'post': 0, 'like': 0, 'comment': 0, 'share': 0},
-                    'zalo': {'post': 0, 'like': 0, 'comment': 0, 'share': 0},
-                    'youtube': {'post': 0, 'like': 0, 'comment': 0, 'share': 0}
+            if creator not in creator_stats:
+                creator_stats[creator] = {
+                    'facebook': {'posts': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0},
+                    'zalo': {'posts': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0},
+                    'youtube': {'posts': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0}
                 }
             
-            # Map platform names
-            platform_key = 'facebook' if 'facebook' in platform else \
-                          'youtube' if 'youtube' in platform else \
-                          'zalo' if 'zalo' in platform else 'facebook'
-            
-            # Increment metrics
-            creator_stats[creator_name][platform_key]['post'] += 1
-            creator_stats[creator_name][platform_key]['like'] += video.get('likes', 0)
-            creator_stats[creator_name][platform_key]['comment'] += video.get('comments', 0)
-            creator_stats[creator_name][platform_key]['share'] += video.get('shares', 0)
+            platform_key = platform.lower() if platform.lower() in ['facebook', 'zalo', 'youtube'] else 'facebook'
+            creator_stats[creator][platform_key]['posts'] += 1
+            creator_stats[creator][platform_key]['views'] += video.get('views', 0)
+            creator_stats[creator][platform_key]['likes'] += video.get('likes', 0)
+            creator_stats[creator][platform_key]['comments'] += video.get('comments', 0)
+            creator_stats[creator][platform_key]['shares'] += video.get('shares', 0)
         
-        # Buat DataFrame dengan header sesuai referensi
+        # Buat DataFrame
         summary_data = []
         for creator, stats in creator_stats.items():
+            # Hitung total
+            total_posts = sum(stats[platform]['posts'] for platform in stats)
+            total_views = sum(stats[platform]['views'] for platform in stats)
+            total_likes = sum(stats[platform]['likes'] for platform in stats)
+            total_comments = sum(stats[platform]['comments'] for platform in stats)
+            total_shares = sum(stats[platform]['shares'] for platform in stats)
+            
             row = {
-                'Tên KD\n業務名稱': creator,
-                # Facebook columns
-                'FB Post\nPO文': stats['facebook']['post'],
-                'FB Like\n喜歡': stats['facebook']['like'],
-                'FB Comment\n評論': stats['facebook']['comment'],
-                'FB Share\n分享': stats['facebook']['share'],
-                # Zalo columns
-                'Zalo Post\nPO文': stats['zalo']['post'],
-                'Zalo Like\n喜歡': stats['zalo']['like'],
-                'Zalo Comment\n評論': stats['zalo']['comment'],
-                # Youtube columns
-                'YT Post\nPO文': stats['youtube']['post'],
-                'YT Like\n喜歡': stats['youtube']['like'],
-                'YT Comment\n評論': stats['youtube']['comment'],
-                # Total columns
-                'Tổng Post': stats['facebook']['post'] + stats['zalo']['post'] + stats['youtube']['post'],
-                'Tổng Like': stats['facebook']['like'] + stats['zalo']['like'] + stats['youtube']['like'],
-                'Tổng Comment': stats['facebook']['comment'] + stats['zalo']['comment'] + stats['youtube']['comment']
+                get_text('summary_creator_name'): creator,
+                get_text('summary_fb_post'): stats['facebook']['posts'],
+                get_text('summary_fb_view'): f"{stats['facebook']['views']:,}",
+                get_text('summary_fb_like'): f"{stats['facebook']['likes']:,}",
+                get_text('summary_fb_comment'): f"{stats['facebook']['comments']:,}",
+                get_text('summary_fb_share'): f"{stats['facebook']['shares']:,}",
+                get_text('summary_zalo_post'): stats['zalo']['posts'],
+                get_text('summary_zalo_view'): f"{stats['zalo']['views']:,}",
+                get_text('summary_zalo_like'): f"{stats['zalo']['likes']:,}",
+                get_text('summary_zalo_comment'): f"{stats['zalo']['comments']:,}",
+                get_text('summary_zalo_share'): f"{stats['zalo']['shares']:,}",
+                get_text('summary_yt_post'): stats['youtube']['posts'],
+                get_text('summary_yt_view'): f"{stats['youtube']['views']:,}",
+                get_text('summary_yt_like'): f"{stats['youtube']['likes']:,}",
+                get_text('summary_yt_comment'): f"{stats['youtube']['comments']:,}",
+                get_text('summary_yt_share'): f"{stats['youtube']['shares']:,}",
+                get_text('summary_total_post'): total_posts,
+                get_text('summary_total_view'): f"{total_views:,}",
+                get_text('summary_total_like'): f"{total_likes:,}",
+                get_text('summary_total_comment'): f"{total_comments:,}",
+                get_text('summary_total_share'): f"{total_shares:,}"
             }
             summary_data.append(row)
         
@@ -198,22 +204,22 @@ class DataExporter:
         
         # Header utama (row 1)
         ws.merge_cells('A1:N1')
-        ws['A1'] = 'BẢNG TỔNG KẾT LƯỢT LIKE, VIEW CÁC KÊNH\n各網頁統計表'
+        ws['A1'] = get_text('summary_main_header')
         ws['A1'].font = Font(bold=True, size=14)
         ws['A1'].alignment = Alignment(horizontal="center", vertical="center")
         
         # Info tanggal (row 2)
         current_date = datetime.now().strftime('%d/%m/%Y')
-        ws['A2'] = 'Ngày lập biểu:\n製表日期'
-        ws['B2'] = 'Thời gian\n時間'
+        ws['A2'] = get_text('summary_date_label')
+        ws['B2'] = get_text('summary_time_label')
         ws['C2'] = current_date
         
         # Header platform (row 3)
-        ws['A3'] = 'Ứng Dụng\n應用\n\nTên KD\n業務名稱'
+        ws['A3'] = get_text('summary_creator_name')
         ws['B3'] = 'Facebook'
         ws['F3'] = 'Zalo'
         ws['I3'] = 'Youtube'
-        ws['L3'] = 'Tổng'
+        ws['L3'] = get_text('summary_total')
         
         # Merge cells untuk platform headers
         ws.merge_cells('B3:E3')  # Facebook
@@ -272,7 +278,7 @@ class DataExporter:
     def display_export_summary(self, video_data: List[Dict]) -> None:
         """Menampilkan ringkasan data yang akan diekspor"""
         if not video_data:
-            st.warning("📭 Tidak ada data untuk diekspor")
+            st.warning(get_text('export_no_data'))
             return
         
         total_videos = len(video_data)
@@ -282,21 +288,21 @@ class DataExporter:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("Total Video", total_videos)
+            st.metric(get_text('export_total_videos'), total_videos)
         
         with col2:
-            st.metric("Platform", len(platforms))
+            st.metric(get_text('export_platforms'), len(platforms))
         
         with col3:
             if date_range:
-                st.metric("Rentang Tanggal", f"{date_range['days']} hari")
+                st.metric(get_text('export_date_range'), get_text('export_days_format').format(days=date_range['days']))
         
         # Tampilkan platform yang ada
         if platforms:
-            st.write("**Platform yang tersedia:**", ", ".join(sorted(platforms)))
+            st.write(f"**{get_text('export_available_platforms')}:**", ", ".join(sorted(platforms)))
         
         if date_range:
-            st.write(f"**Periode data:** {date_range['start']} - {date_range['end']}")
+            st.write(f"**{get_text('export_data_period')}:** {date_range['start']} - {date_range['end']}")
     
     def _get_date_range(self, video_data: List[Dict]) -> Dict:
         """Mendapatkan rentang tanggal dari data"""
