@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": ".",
+    "STREAMLIT_SERVER_HEADLESS": "true",
+    "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false"
+  },
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60
+    }
+  },
+  "installCommand": "pip install -r requirements-vercel.txt",
+  "buildCommand": "echo 'Build completed'"
+}
